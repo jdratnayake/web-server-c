@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #define PORT 8080
 
@@ -38,6 +39,20 @@ int main()
         return 1;
     }
     printf("server listening for connections\n");
+
+    for(;;)
+    {
+        // accept incoming connections
+        int newsockfd = accept(sockfd, (struct sockaddr *)&host_addr, (socklen_t *)&host_addrlen);
+    
+        if (newsockfd < 0)
+        {
+            perror("webserver (accept)");
+            continue;
+        }
+
+        close(newsockfd);
+    }
 
     return 0;
 } 
