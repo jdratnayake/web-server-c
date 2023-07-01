@@ -5,9 +5,12 @@
 #include <unistd.h>
 
 #define PORT 8080
+#define BUFFER_SIZE 1024
 
 int main()
 {
+    char buffer[BUFFER_SIZE];
+
     // create socket
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1)
@@ -48,6 +51,15 @@ int main()
         if (newsockfd < 0)
         {
             perror("webserver (accept)");
+            continue;
+        }
+        printf("connection accepted\n");
+
+        // read from the socket
+        int valread = read(newsockfd, buffer, BUFFER_SIZE);
+        if (valread < 0)
+        {
+            perror("webserver (read)");
             continue;
         }
 
