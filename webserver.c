@@ -80,6 +80,11 @@ int main()
             continue;
         }
 
+        // read the request
+        char method[BUFFER_SIZE], uri[BUFFER_SIZE], version[BUFFER_SIZE];
+        sscanf(buffer, "%s %s %s\n", method, uri, version);
+        printf("[%s:%u] %s %s %s\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port), method, version, uri);
+
         // write to the socket
         int valwrite = write(newsockfd, resp, strlen(resp));
         if (valwrite < 0)
