@@ -128,6 +128,42 @@ int main()
 
         buffer[bytesRead] = '\0';
 
+        if (strstr(buffer, "POST /submit") != NULL)
+        {
+            const char *response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+            send(new_socket, response, strlen(response), 0);
+
+            // Process the form data
+            char *data_start = strstr(buffer, "\r\n\r\n") + 4; // Find the start of POST data
+            char *current_field = strtok(data_start, "&");
+            char response_page[BUFFER_SIZE];
+
+            snprintf(response_page, sizeof(response_page), "<html><body><h1>Form Data</h1>");
+
+            while (current_field != NULL) {
+                char field_name[256];
+                char field_value[256];
+
+                sscanf(current_field, "%[^=]=%s", field_name, field_value);
+
+                // URL decode the field name and value (optional)
+                // Implement URL decoding here if needed
+
+                snprintf(response_page + strlen(response_page), sizeof(response_page) - strlen(response_page),
+                         "<p>%s: %s</p>", field_name, field_value);
+
+                current_field = strtok(NULL, "&");
+            }
+
+            snprintf(response_page + strlen(response_page), sizeof(response_page) - strlen(response_page),
+                     "</body></html>");
+
+            send(new_socket, response_page, strlen(response_page), 0);
+
+            close(new_socket);
+            continue;
+        }
+
         char filename[256];
         char filepath[256];
 
