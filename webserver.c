@@ -14,7 +14,34 @@
 
 void send_file(int client_socket, const char *filename)
 {
-    FILE *file;
+    char buffer[BUFFER_SIZE];
+    // store the number of bytes read from the file in each iteration of the loop
+    // size_t = used to represent the size of objects in memory. It is an unsigned integer type
+    size_t bytesRead;
+
+    if (strstr(filename, ".php") != NULL)
+    {
+        char command[512];
+        sprintf(command, "php %s", filename);
+
+        FILE *php_output = popen(command, "r");
+        if (php_output == NULL) {
+            perror("PHP execution error");
+            close(client_socket);
+        }
+        
+        // Read PHP script output and send to client
+        char buffer[BUFFER_SIZE];
+        size_t bytesRead;
+        
+        while ((bytesRead = fread(buffer, 1, BUFFER_SIZE, php_output)) > 0) {
+            send(client_socket, buffer, bytesRead, 0);
+        }
+        
+        pclose(php_output);
+    } 
+    else {
+        FILE *file;
 
     if (access(filename, F_OK) == 0) {
         printf("File exists\n");
@@ -32,17 +59,13 @@ void send_file(int client_socket, const char *filename)
         exit(1);
     }
 
-    char buffer[BUFFER_SIZE];
-    // store the number of bytes read from the file in each iteration of the loop
-    // size_t = used to represent the size of objects in memory. It is an unsigned integer type
-    size_t bytesRead;
-
     while((bytesRead = fread(buffer, 1, BUFFER_SIZE, file)) > 0)
     {
         send(client_socket, buffer, bytesRead, 0);
     }
 
     fclose(file);
+    }
 }
 
 int main()
@@ -116,10 +139,6 @@ int main()
         }
 
         sprintf(filepath, "www/%s", filename);
-
-        
-
-        
 
         const char *response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
         send(new_socket, response, strlen(response), 0);
