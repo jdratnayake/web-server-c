@@ -1,100 +1,69 @@
-#include <arpa/inet.h>
-#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <unistd.h>
 
 #define PORT 8080
-#define BUFFER_SIZE 1024
+#define MAX_CONN 3
+#define RESPONSE "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello, world!"
 
 int main()
 {
-    char buffer[BUFFER_SIZE];
-    char resp[] = "HTTP/1.0 200 OK\r\n"
-                  "Server: webserver-c\r\n"
-                  "Content-type: text/html\r\n\r\n"
-                  "<html>hello, world</html>\r\n";
+    // store the file descriptors (identifiers) for the server socket and the new client socket
+    // A file descriptor is a unique identifier for an open socket
+    int server_fd, new_socket;
+    // used to represent an IPv4 socket address
+    struct sockaddr_in address;
+    int addrlen = sizeof(address);
+    char buffer[1024] = {0};
 
-    // create socket
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1)
-    {
-        perror("webserver (socket) ");
-        return 1;
+    // AF_INET means IPv4 address family
+    // SOCK_STREAM = indicate TCP socket
+    // 0 = OS select an appropriate protocol based on the provided features
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0){
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
     }
-    printf("socket created successfully\n");
+    printf("Socket created successfully\n");
 
-    // create the address to bind the socket to
-    struct sockaddr_in host_addr;
-    int host_addrlen = sizeof(host_addr);
+    address.sin_family = AF_INET;
+    // sin_addr = represents the IP address to that the socket will be bound
+    // INADDR_ANY is a constant that represents all available network interfaces 
+    // on the host. This means the server will listen on all available network interfaces
+    address.sin_addr.s_addr = INADDR_ANY;
+    // converts the port number from host byte order to network byte order
+    address.sin_port = htons(PORT);
 
-    host_addr.sin_family = AF_INET;
-    host_addr.sin_port = htons(PORT);
-    host_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    // create client address
-    struct sockaddr_in client_addr;
-    int client_addrlen = sizeof(client_addr);
-
-    if (bind(sockfd, (struct sockaddr*)&host_addr, host_addrlen) != 0)
+    // associate the server socket with a specific IP address and port number
+    if (bind(server_fd, (struct sockaddr *)&address, addrlen) < 0)
     {
-        perror("webserver (bind) ");
-        return 1;
+        perror("Bind failed");
+        exit(EXIT_FAILURE);
     }
-    printf("socket successfully bound to address\n");
+    printf("IP address bind successfully\n");
 
-    // listen for incoming connections
-    if (listen(sockfd, SOMAXCONN) != 0)
-    {
-        perror("webserver (listen)");
-        return 1;
+    if (listen(server_fd, 3) < 0) {
+        perror("Listen failed");
+        exit(EXIT_FAILURE);
     }
-    printf("server listening for connections\n");
+    printf("Server listening for connections\n");
 
-    for(;;)
+    while (1)
     {
-        // accept incoming connections
-        int newsockfd = accept(sockfd, (struct sockaddr *)&host_addr, (socklen_t *)&host_addrlen);
-    
-        if (newsockfd < 0)
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0)
         {
-            perror("webserver (accept)");
-            continue;
+            perror("Accept failed");
+            exit(EXIT_FAILURE);
         }
-        printf("connection accepted\n");
+        printf("Accept the connection\n");
 
-        // get client address
-        int sockn = getsockname(newsockfd, (struct sockaddr*)&client_addr, (socklen_t*)&client_addrlen);
-        if (sockn < 0)
-        {
-            perror("webserver (getsockname)");
-            continue;
-        }
-
-        // read from the socket
-        int valread = read(newsockfd, buffer, BUFFER_SIZE);
-        if (valread < 0)
-        {
-            perror("webserver (read)");
-            continue;
-        }
-
-        // read the request
-        char method[BUFFER_SIZE], uri[BUFFER_SIZE], version[BUFFER_SIZE];
-        sscanf(buffer, "%s %s %s\n", method, uri, version);
-        printf("[%s:%u] %s %s %s\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port), method, version, uri);
-
-        // write to the socket
-        int valwrite = write(newsockfd, resp, strlen(resp));
-        if (valwrite < 0)
-        {
-            perror("webserver (write)");
-            continue;
-        }
-
-        close(newsockfd);
+        // 0 = indicate sending
+        send(new_socket, RESPONSE, strlen(RESPONSE), 0);
+        printf("Response sent to client\n");
+        close(new_socket);
     }
 
     return 0;
-} 
+}
