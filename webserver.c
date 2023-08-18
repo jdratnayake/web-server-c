@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/sendfile.h>
 
 #define PORT 8080
 #define MAX_CONN 3
@@ -41,30 +42,41 @@ void send_file(int client_socket, const char *filename)
         pclose(php_output);
     } 
     else {
-        FILE *file;
+        int filefd;
 
     if (access(filename, F_OK) == 0) {
         printf("File exists\n");
         // opens the specified file for reading in binary mode
-        file = fopen(filename, "rb");
+        filefd = open(filename, O_RDONLY);
     } else {
         printf("File doesn't exists\n");
         // opens the specified file for reading in binary mode
-        file = fopen("www/error.html", "rb");
+        filefd = open("www/error.html", O_RDONLY);
     }
 
-    if (file == NULL)
+    if (filefd == -1)
     {
         perror("File open error");
         exit(1);
     }
 
-    while((bytesRead = fread(buffer, 1, BUFFER_SIZE, file)) > 0)
-    {
-        send(client_socket, buffer, bytesRead, 0);
+    struct stat filestat;
+    fstat(filefd, &filestat);
+
+    off_t offset = 0;
+    ssize_t sent_bytes = 0;
+
+    while (sent_bytes < filestat.st_size) {
+        ssize_t remaining_bytes = filestat.st_size - sent_bytes;
+        ssize_t bytes_sent = sendfile(client_socket, filefd, &offset, remaining_bytes);
+        if (bytes_sent <= 0) {
+            perror("sendfile error");
+            break;
+        }
+        sent_bytes += bytes_sent;
     }
 
-    fclose(file);
+    close(filefd);
     }
 }
 
