@@ -176,7 +176,17 @@ int main()
 
         sprintf(filepath, "www/%s", filename);
 
-        const char *response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+        // Determine content type
+        const char *content_type = "text/html"; // Default to plain text
+
+        if (strstr(filepath, ".pdf") != NULL) {
+            content_type = "application/pdf";
+        } else if (strstr(filepath, ".jpg") != NULL || strstr(filepath, ".jpeg") != NULL) {
+            content_type = "image/jpeg";
+        }
+
+        char response[BUFFER_SIZE];
+        snprintf(response, sizeof(response), "HTTP/1.1 200 OK\r\nContent-Type: %s\r\n\r\n", content_type);
         send(new_socket, response, strlen(response), 0);
         send_file(new_socket, filepath);
 
