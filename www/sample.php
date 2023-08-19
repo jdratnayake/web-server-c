@@ -8,7 +8,7 @@
     <h1>Hello from PHP!</h1>
     <p>This is a test PHP page.</p>
     <?php
-        $name = "CODAI";
+        $name = "Janitha";
         echo "<p>Hello, $name!</p>";
     ?>
 </body>
